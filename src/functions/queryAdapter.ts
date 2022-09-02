@@ -24,16 +24,17 @@ export async function queryPodUnion(req, res) {
         }
       }
     }
+    console.log('query', q)
     let final, query, results, allowed
     const type = translate(q).type
-    if (type === "project") {
+    if (type === "project" || type === "slice") {
       query = validateSelectQuery(q)
       console.log('query', query)
       results = await querySparql(query, dataset, req.headers.accept, type)
       const set = new Set()
-
+      console.log('query', query)
       results.results.bindings.forEach(item => {
-        for (const k of Object.keys(item)) {
+        for (const k of Object.keys(item)) { 
           if (k.startsWith("graph_")) {
             set.add(item[k].value)
           }
@@ -72,7 +73,7 @@ export async function queryPodUnion(req, res) {
       }
     }
 
-
+    console.log('final', final)
     return final
   } catch (error) {
     console.log(`error`, error)
@@ -257,13 +258,15 @@ function graphTemplate(graph) {
 
 function validateSelectQuery(query) {
   const translation = translate(query);
-  const newQuery: any = {
+  console.log('translation', translation)
+  const type = translation.type
+  let newQuery: any = {
     type: "project",
     input: {
       type: "join",
       input: []
     },
-    variables: translation.variables
+    variables: translation.variables || translation.input.variables
   }
   const { bgp, variables } = findLowerLevel(translation, translation.variables)
   let added = 1
@@ -295,6 +298,10 @@ function validateSelectQuery(query) {
     added += 1
   }
 
+  if (type === "slice") {
+    newQuery = {...translation, input: newQuery}
+  }
+
   const q = toSparql(newQuery)
   return q
 }
@@ -311,6 +318,7 @@ function findLowerLevel(obj, variables) {
   if (obj.type === "bgp") {
     return { bgp: obj, variables }
   } else {
+    console.log('obj', obj)
     return findLowerLevel(obj.input, variables)
   }
 } 

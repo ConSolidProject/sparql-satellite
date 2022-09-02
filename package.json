@@ -7,8 +7,12 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "env-cmd -f ./dc.env ts-node src/index.ts",
     "dev": "env-cmd -f ./dc.env nodemon src/index.ts",
-    "start:docker": "ts-node src/sf.ts",
-    "dev:docker": "nodemon src/index.ts"
+    "start:docker": "ts-node src/index.ts",
+    "dev:docker": "nodemon src/index.ts",
+    "architect": "env-cmd -f ./env-architect.env nodemon src/index.ts",
+    "engineer": "env-cmd -f ./env-engineer.env nodemon src/index.ts",
+    "fm": "env-cmd -f ./env-fm.env nodemon src/index.ts",
+    "demo": "concurrently \"npm run architect\" \"npm run engineer\" \"npm run fm\""
   },
   "keywords": [],
   "author": "",
