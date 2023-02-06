@@ -1,10 +1,5 @@
-import {log} from '../logger'
-import {deleteResource, uploadResource, uploadRdfToTripleStore, getAllGraphs, getAllDatasets, querySparql, createRepository, checkRepositoryExistence} from '../functions'
+import {deleteResource, uploadRdfToTripleStore, getAllGraphs, getAllDatasets, createRepository} from '../functions'
 import {queryPodUnion} from '../functions/queryAdapter'
-import findRecursive from '../functions/storageLogic'
-
-const { resolve } = require('path');
-const { readdir } = require('fs').promises;
 
 // functionality for uploading new resource to the satellite
 async function syncResourceAdd(req, res) {
@@ -51,8 +46,12 @@ async function getAllMirroredResources(req, res) {
 }
 
 async function queryDatabase(req, res) {
+    const start = new Date()
     const results = await queryPodUnion(req, res)
+    const end = new Date()
     res.setHeader("Content-Type", "application/sparql-results+json")
+    const duration = end.getTime() - start.getTime()
+    console.log('duration', duration)
     res.status(200).send(results)
 }
 

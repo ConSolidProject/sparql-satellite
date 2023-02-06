@@ -34,7 +34,6 @@ async function getAllGraphs(dataset) {
         `SELECT DISTINCT ?g WHERE {GRAPH ?g {?s ?p ?o}}`,
         dataset,
         "application/sparql-results+json",
-        "project"
     );
     return graphsInStore.results.bindings.map((b) => b.g.value);
 }
@@ -150,14 +149,12 @@ async function checkExistenceInTripleStore(named, dataset) {
         `ASK WHERE { GRAPH <${named}> { ?s ?p ?o } }`,
         dataset,
         "",
-        "project"
     );
     return result.boolean;
 }
 
 // perform a SPARQL query on the SPARQL store
-async function querySparql(query, dataset, accept, type) {
-
+async function querySparql(query, dataset, accept) {
     var urlencoded = new URLSearchParams();
     urlencoded.append("query", query);
 

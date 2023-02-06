@@ -9,10 +9,17 @@
     "dev": "env-cmd -f ./dc.env nodemon src/index.ts",
     "start:docker": "ts-node src/index.ts",
     "dev:docker": "nodemon src/index.ts",
+
     "architect": "env-cmd -f ./env-architect.env nodemon src/index.ts",
     "engineer": "env-cmd -f ./env-engineer.env nodemon src/index.ts",
     "fm": "env-cmd -f ./env-fm.env nodemon src/index.ts",
-    "demo": "concurrently \"npm run architect\" \"npm run engineer\" \"npm run fm\""
+
+    "b-b": "env-cmd -f ./env-b-b.env nodemon src/index.ts",
+    "arcadis": "env-cmd -f ./env-arcadis.env nodemon src/index.ts",
+    "fm-ugent": "env-cmd -f ./env-fm-ugent.env nodemon src/index.ts",
+
+    "duplex": "concurrently \"npm run architect\" \"npm run engineer\" \"npm run fm\"",
+    "igent": "concurrently \"npm run b-b\" \"npm run arcadis\" \"npm run fm-ugent\""
   },
   "keywords": [],
   "author": "",

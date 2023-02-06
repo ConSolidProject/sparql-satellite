@@ -4,66 +4,76 @@ import { querySparql, updateSparql } from './index'
 const N3 = require('n3');
 const { DataFactory } = N3;
 const { namedNode, literal, defaultGraph, quad, variable } = DataFactory;
-
+const fetch = require('node-fetch')
 
 export async function queryPodUnion(req, res) {
   try {
     const actor = req.auth.webId
     const dataset = req.params.dataset
     let q
-    if (req.query && req.query.query) {
-      q = req.query.query
-    } else if (req.body) {
-      if (req.body.query) {
-        q = req.body.query
-      } else {
-        try {
-          q = Buffer.from(req.body).toString("utf8")
-        } catch (error) {
-          console.log('error', error)
-        }
-      }
-    }
-    console.log('query', q)
-    let final, query, results, allowed
-    const type = translate(q).type
-    if (type === "project" || type === "slice") {
-      query = validateSelectQuery(q)
-      console.log('query', query)
-      results = await querySparql(query, dataset, req.headers.accept, type)
-      const set = new Set()
-      console.log('query', query)
-      results.results.bindings.forEach(item => {
-        for (const k of Object.keys(item)) { 
-          if (k.startsWith("graph_")) {
-            set.add(item[k].value)
-          }
-        }
-      })
-      allowed = await checkAccessRights(set, actor, dataset)
-      console.log('allowed', allowed)     
-      const final = results.results.bindings.map(binding => {
-        const original = {}
-        for (const key of Object.keys(binding)) {
-          if (key.startsWith('graph_')) {
-            if (!allowed.has(binding[key].value)) {
-              console.log('binding[key].value', key, binding[key].value)
-              return undefined
-            }
-          } else {
-            original[key] = binding[key]
-          }
-        }
-        return original
-      })
+    if (req.body && req.body.query) q = req.body.query
+    // if (req.query && req.query.query) {
+    //   q = req.query.query
+    // } else if (req.body) {
+    //   if (req.body.query) {
+    //     q = req.body.query
+    //   } else {
+    //     try {
+    //       q = Buffer.from(req.body).toString("utf8")
+    //     } catch (error) {
+    //       console.log('error', error)
+    //     }
+    //   }
+    // }
 
-      const response = {head: {vars: results.head.vars.filter(item => !item.includes('graph_'))}, results: {bindings: final}}
-      return response
+    let final, query, results, allowed
+    const translated = translate(q)
+    const type = translated.type
+    if (type === "project") {
+      if (translated.input.type === "graph") {
+        const graph = translated.input.name.value
+        
+        const can = await checkNamedQuery(graph, actor, dataset)
+        if (can) {
+          results = await querySparql(q, dataset, req.headers.accept)
+          return results
+        } else {
+          return {}
+        }
+        
+      } else {
+        query = validateSelectQuery(q)
+        results = await querySparql(query, dataset, req.headers.accept)
+        
+        const set = new Set()
+  
+        results.results.bindings.forEach(item => {
+          for (const k of Object.keys(item)) {
+            if (k.startsWith("graph_")) {
+              set.add(item[k].value)
+            }
+          }
+        })
+        allowed = await checkAccessRights(set, actor, dataset)     
+        const final = results.results.bindings.map(binding => {
+          const original = {}
+          for (const key of Object.keys(binding)) {
+            if (key.startsWith('graph_')) {
+              if (!allowed.has(binding[key].value)) {
+                return undefined
+              }
+            } else {
+              original[key] = binding[key]
+            }
+          }
+          return original
+        })
+        const response = {head: {vars: results.head.vars.filter(item => !item.includes('graph_'))}, results: {bindings: final}}
+        return response
+      }
     } else if (type === "construct") {
       query = validateConstructQuery(q)
-      console.log('query', query)
-      results = await querySparql(query ,dataset, req.headers.accept, type)
-      console.log('results', results)
+      results = await querySparql(query ,dataset, req.headers.accept)
       const toCheck = await getContainer(results["@graph"])
       allowed = await checkAccessRights(toCheck, actor, dataset)
       if (isSubsetOf(allowed, toCheck)) {
@@ -73,12 +83,44 @@ export async function queryPodUnion(req, res) {
       }
     }
 
-    console.log('final', final)
+
     return final
   } catch (error) {
     console.log(`error`, error)
     return new Error(error)
   }
+}
+
+async function queryFuseki(query, endpoint) {
+  let urlencoded = new URLSearchParams();
+  urlencoded.append("query", query)
+  const requestOptions = {
+      method: 'POST',
+      headers: {"Content-Type": "application/x-www-form-urlencoded"},
+      body: urlencoded,
+  };
+
+  const results = await fetch(`${endpoint}`, requestOptions)
+  return results
+}
+
+async function checkNamedQuery(graph, actor, dataset) {
+  const acl = graph + '.acl'
+  const query = `PREFIX acl: <http://www.w3.org/ns/auth/acl#>
+  PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+  PREFIX vcard: <http://www.w3.org/2006/vcard/ns#>
+  
+  ASK {
+  GRAPH <${acl}> {
+    {?authorization a acl:Authorization . }
+    {?authorization acl:agent <${actor}> . } UNION { ?authorization acl:agentClass foaf:Agent }
+     ?authorization  acl:mode acl:Read .
+  }}`
+
+  let url = process.env.SPARQL_STORE_ENDPOINT + "/" + dataset;
+
+  const can = await queryFuseki(query, url).then(i=> i.json())
+  return can.boolean
 }
 
 function isSubsetOf(set, subset) {
@@ -146,7 +188,7 @@ async function checkAccessRights(set, actor, dataset) {
     } order by strlen(str(?resource))`
   }
 
-  const allAcls = await querySparql(aclQuery, dataset, "application/sparql-results+json", "project")
+  const allAcls = await querySparql(aclQuery, dataset, "application/sparql-results+json")
 
   const allowed = new Set()
   allAcls.results.bindings.forEach(item => allowed.add(item.resource.value))
@@ -211,7 +253,6 @@ async function checkAccessRights(set, actor, dataset) {
 
 function validateConstructQuery(query) {
   const translation = translate(query);
-  console.log('JSON.strinfigy(translation, undefined, 4)', JSON.stringify(translation, undefined, 4))
   const newQuery: any = {
     type: "construct",
     input: {
@@ -258,15 +299,13 @@ function graphTemplate(graph) {
 
 function validateSelectQuery(query) {
   const translation = translate(query);
-  console.log('translation', translation)
-  const type = translation.type
-  let newQuery: any = {
+  const newQuery: any = {
     type: "project",
     input: {
       type: "join",
       input: []
     },
-    variables: translation.variables || translation.input.variables
+    variables: translation.variables
   }
   const { bgp, variables } = findLowerLevel(translation, translation.variables)
   let added = 1
@@ -298,10 +337,6 @@ function validateSelectQuery(query) {
     added += 1
   }
 
-  if (type === "slice") {
-    newQuery = {...translation, input: newQuery}
-  }
-
   const q = toSparql(newQuery)
   return q
 }
@@ -318,7 +353,6 @@ function findLowerLevel(obj, variables) {
   if (obj.type === "bgp") {
     return { bgp: obj, variables }
   } else {
-    console.log('obj', obj)
     return findLowerLevel(obj.input, variables)
   }
 } 
