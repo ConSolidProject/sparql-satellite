@@ -1,73 +1,97 @@
-import {deleteResource, uploadRdfToTripleStore, getAllGraphs, getAllDatasets, createRepository} from '../functions'
-import {queryPodUnion} from '../functions/queryAdapter'
+import { translate, toSparql } from 'sparqlalgebrajs'
+import fetch from 'node-fetch'
 
-// functionality for uploading new resource to the satellite
-async function syncResourceAdd(req, res) {
-    let {url} = req.body 
-    // 1. internal satellite logic to store graphs (e.g. one dataset per project, or multiple dataset per project, or the entire pod in one dataset etc.)
+export async function getAllowedResources(req, res) {
+    const actor = req.auth.webId
+
     const dataset = req.params.dataset
-    // 2. get the resource and upload to triple store
-    await uploadRdfToTripleStore([url], {overwrite: false}, dataset, req.fetch)
-
-    // 3. post processing LBDserver: add distribution to Pod if it is a dataset
-
-    res.status(201).send()
+    const mode = `http://www.w3.org/ns/auth/acl#${capitalizeFirstLetter(req.params.mode)}`
+    const allowed = await getPermissions(actor, mode, dataset)
+    res.status(200).send(allowed)
 }
 
-// functionality for deleting resource on the satellite
-async function syncResourceDelete(req, res) {
-    const {url} = req.body
-
-    // 1. internal satellite logic to store graphs (e.g. one dataset per project, or multiple dataset per project, or the entire pod in one dataset etc.)
+export async function query(req, res) {
+    // get allowed subset
+    const actor = req.auth.webId
     const dataset = req.params.dataset
-
-    // 2. delete the resource on this dataset
-    await deleteResource(url, dataset)
-
-    res.status(204).send()
-}
-
-// functionality for updating resource on the satellite
-async function syncResourceUpdate(req, res) {
-    const {url} = req.body
-    const dataset = req.params.dataset
-    await uploadRdfToTripleStore([url], {overwrite: true}, dataset, req.fetch)
-    res.status(204).send()
-}
-
-async function getAllMirroredResources(req, res) {
-    const datasets = await getAllDatasets().then(ds => ds.datasets.map(item => item["ds.name"].substring(1) ))
-    const all = []
-    for (const ds of datasets) {
-        const items = await getAllGraphs(ds)
-        all.push(items)
+    const mode = `http://www.w3.org/ns/auth/acl#Read`
+    const allowed = await getPermissions(actor, mode, dataset).then(results => results.results.bindings.map(i => i.resource.value))
+    let q
+    if (req.body && req.body.query) q = req.body.query
+    if (req.query && req.query.query) {
+      q = req.query.query
+    } else if (req.body) {
+      if (req.body.query) {
+        q = req.body.query
+      } else {
+        try {
+          q = Buffer.from(req.body).toString("utf8")
+        } catch (error) {
+          console.log('error', error)
+        }
+      }
     }
-    res.status(200).send(all.flat())
+
+    if (!q) res.send("no query")
+    let translation = translate(q)
+    const wrapped = {
+        type: "graph",
+        input: translation.input,
+        name: {
+            "termType": "Variable",
+            "value": "g"
+        }
+    }
+    const newQ:any = { type: "from", input: {type: "project", variables: translation.variables, input: wrapped} }
+    newQ.named = allowed.map(i => { return { "termType": "NamedNode", "value": i } })
+    let query = toSparql(newQ)
+    const url = process.env.SPARQL_STORE_ENDPOINT + dataset;
+    const data = await queryFuseki(query, url).then(res => res.json())
+    res.status(200).send(data)
 }
 
-async function queryDatabase(req, res) {
-    const start = new Date()
-    const results = await queryPodUnion(req, res)
-    const end = new Date()
-    res.setHeader("Content-Type", "application/sparql-results+json")
-    const duration = end.getTime() - start.getTime()
-    console.log('duration', duration)
-    res.status(200).send(results)
+function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-async function getDataset(req, res) {
-    res.status(200).send()
-}
+async function queryFuseki(query, endpoint) {
+    let urlencoded = new URLSearchParams();
+    urlencoded.append("query", query)
+    const requestOptions = {
+        method: 'POST',
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: urlencoded,
+    };
+  
+    const results = await fetch(endpoint, requestOptions)
+    return results
+  }
 
-async function createDataset(req, res) {
-    // if (req.auth.webId !== JSON.parse(process.env.ACCOUNT).webId) {
-    //     console.log("hat nicht geklappt")
-    //     res.status(401).send()
-    // } else {
-        const {repository} = req.body
-        await createRepository(repository)
-        res.status(201).send(repository)
-    // }
-}
 
-export {syncResourceAdd, syncResourceDelete, syncResourceUpdate, queryDatabase, getDataset, getAllMirroredResources, createDataset}
+export async function getPermissions(agent, mode, dataset) {
+    let query
+    if (agent) {
+      query = `PREFIX acl: <http://www.w3.org/ns/auth/acl#>
+      SELECT DISTINCT ?resource
+      WHERE {
+       ?acl a acl:Authorization ; 
+          acl:mode <${mode}> .
+        {?acl acl:accessTo ?resource} UNION {?acl acl:default ?resource }
+        {?acl acl:agent <${agent}> . }
+        UNION 
+        {?acl acl:agentClass <http://xmlns.com/foaf/0.1/Agent>. }
+      }`
+    } else {
+      query = `PREFIX acl: <http://www.w3.org/ns/auth/acl#>
+    SELECT DISTINCT ?resource
+    WHERE {
+     ?acl a acl:Authorization ; 
+        acl:agentClass <http://xmlns.com/foaf/0.1/Agent> ;
+        acl:mode <${mode}> .
+      {?acl acl:accessTo ?resource} UNION {?acl acl:default ?resource }
+    }`}
+  
+    const url = process.env.SPARQL_STORE_ENDPOINT + dataset;
+    const response = await queryFuseki(query, url).then(i=> i.json()).catch(err => console.log('err', err))
+    return response
+  }
