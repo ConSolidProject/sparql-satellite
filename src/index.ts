@@ -1,7 +1,7 @@
 import express from 'express'
 import { log } from './logger'
 import cors from 'cors'
-import { query, getAllowedResources} from "./controller"
+import { query, getAllowedResources, getReferences} from "./controller"
 import bodyParser from 'body-parser'
 
 import { extractWebId, setSatellite } from "express-solid-auth-wrapper"
@@ -33,6 +33,8 @@ app.get('/:dataset/allowed/:mode', getAllowedResources)
 
 // dataset query
 app.post("/:dataset/sparql", query)
+
+app.post("/:dataset/references", getReferences)
 
 // dataset query
 app.get("/:dataset/sparql", query)
