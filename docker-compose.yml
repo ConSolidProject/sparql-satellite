@@ -1,0 +1,18 @@
+version: '3'
+services:
+  sat:
+    container_name: sat
+    restart: always
+    # image: sparql-satellite
+    build: . 
+    env_file:
+      - ./.env
+    volumes:
+      - ./src:/sparql-satellite/src
+      - ./node_modules:/sparql-satellite/node_modules
+    # depends_on:
+      # - office2-fuseki
+      # - office2-solid
+    command: npm run dev:docker
+    ports:
+      - 2002:2002
