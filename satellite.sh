@@ -1,0 +1,1 @@
+env-cmd -f ./config/env-remote.env ts-node src/index.ts

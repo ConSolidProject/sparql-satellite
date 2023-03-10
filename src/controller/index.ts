@@ -13,42 +13,64 @@ export async function getAllowedResources(req, res) {
 } 
 
 function adaptQuery(q, allowed, type) {
-  let translation = translate(q)
+  let translation: any = translate(q)
+  const bgp = findLowerLevel(translation)
   let wrapped
   let variables
+  type = type.toLowerCase()
   if (type === "from named") {
     wrapped = {
       type: "graph",
-      input: translation.input,
+      input: bgp.bgp,
       name: {
         "termType": "Variable",
         "value": "g" 
-      } 
+      } ,
     }
-    variables = [...translation.variables, { "termType": "Variable", "value": "g" }]
   } else {
-    wrapped = translation.input 
-    variables = [...translation.variables]
+    wrapped = bgp.bgp
+    variables = [...bgp.variables]
+  }
+
+  let input: any =       { 
+      type: "project",
+      input: wrapped,
+      variables: [...bgp.variables]
+    }
+
+  if (translation.type == "slice") {
+      input = {
+          type: "slice", 
+          input,
+          start: translation["start"],
+          length: translation.length
+      }
   }
 
   const newQ: any = { 
     type: "from",
-    input:
-    { 
-      type: "project", variables,
-      input: wrapped,
-    },
-
+    input  
   }
 
+  
   if (type === "from named") {
       newQ.named = allowed.map(i => { return { "termType": "NamedNode", "value": i } })
   } else {
     newQ.default = allowed.map(i => { return { "termType": "NamedNode", "value": i } })
   } 
  let query = toSparql(newQ)
+
   return query  
 
+}
+
+function findLowerLevel(obj, variables?) {
+  if (!variables) variables = obj.variables
+  if (obj.type === "bgp") { 
+      return {bgp: obj, variables}
+  } else {
+      return findLowerLevel(obj.input, variables)
+  }    
 }
 
 export async function query(req, res) {
@@ -82,9 +104,7 @@ export async function query(req, res) {
   if (!queryType) queryType = "from"
 
   if (!q) res.send("no query")
-  console.log(q)
   const query = adaptQuery(q, allowed, queryType.toLowerCase())
-  console.log(query)
   const url = process.env.SPARQL_STORE_ENDPOINT + dataset;
   const data = await queryFuseki(query, url).then(res => res.json())
   const endQuery = new Date()
@@ -121,7 +141,7 @@ export async function getReferences(req, res) {
   }
 
   const all = []
-  for (const ref of references) {
+  for (const ref of references) { 
     const results = await getReference(ref, rr, url)
     all.push(results)
   }
