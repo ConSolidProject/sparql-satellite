@@ -105,10 +105,12 @@ export async function query(req, res) {
 
   if (!q) res.send("no query")
   const query = adaptQuery(q, allowed, queryType.toLowerCase())
+  console.log('query :>> ', query);
   const url = process.env.SPARQL_STORE_ENDPOINT + dataset;
   const data = await queryFuseki(query, url).then(res => res.json())
   const endQuery = new Date()
   const queryTime = endQuery.getTime() - startQuery.getTime()
+  res.set("Content-Type", "application/sparql-results+json")
   res.status(200).send(data)
 
   // log.info(query)
