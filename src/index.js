@@ -1,16 +1,14 @@
-import express from 'express'
-import { log } from './logger'
-import cors from 'cors'
-import { query, getAllowedResources, getReferences} from "./controller"
-import bodyParser from 'body-parser'
-
-import { extractWebId, setSatellite } from "express-solid-auth-wrapper"
-
+const express = require( 'express')
+const { log } = require( './logger')
+const cors = require( 'cors')
+const { query, getAllowedResources, getReferences} = require( "./controller")
+const bodyParser = require( 'body-parser')
+const { extractWebId } = require("express-solid-auth-wrapper")
 const port = process.env.PORT_SPARQL_SATELLITE
 
 const app = express();
 app.use(cors())
-app.use(express.json());
+app.use(express.json()); 
 
 var options = {
     inflate: true,
@@ -19,7 +17,7 @@ var options = {
 };
 
 app.use(bodyParser.raw(options));
-app.use(express.urlencoded({ limit: "5mb", extended: true }));
+app.use(express.urlencoded({ limit: "5mb", extended: true })); 
 
 // set satellite authenticated session as req.session
 app.use(extractWebId)
@@ -29,14 +27,14 @@ app.get('/', (req, res) => {
     res.send('app is running') 
 })  
 
-app.get('/:dataset/allowed/:mode', getAllowedResources)
+app.post('/:dataset/allowed/:mode', getAllowedResources)
 
 app.post("/:dataset/references", getReferences)
 
 // dataset query
-app.get("/:dataset/sparql", query)
+app.get("/:dataset/sparql", query) 
 app.post("/:dataset/sparql", query)
 
 app.listen(port, async () => {
     log.info(`Server listening at http://localhost:${port}`);
-})
+})   

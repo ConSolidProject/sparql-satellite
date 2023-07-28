@@ -78,4 +78,4 @@ const selectRemoteRepresentation = (alias, concept, graph) => {
     }}`)
 }
 
-export {selectConcept, selectRemoteRepresentation, selectLocalRepresentation, getReferenceRegistries}
+module.exports = {selectConcept, selectRemoteRepresentation, selectLocalRepresentation, getReferenceRegistries}

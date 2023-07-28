@@ -1,5 +1,5 @@
-import logger from 'pino'
-import dayjs from 'dayjs'
+const logger = require('pino')
+const dayjs = require('dayjs')
 
 const log = logger({
     prettyPrint: true,
@@ -9,4 +9,4 @@ const log = logger({
     timestamp: () => `,"time":"${dayjs().format()}`
 })
 
-export {log} 
+module.exports = {log}

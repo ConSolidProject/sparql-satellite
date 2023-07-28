@@ -12,8 +12,8 @@
     "arcadis": "env-cmd -f ./config/env-arcadis.env nodemon src/index.ts",
     "fm-ugent": "env-cmd -f ./config/env-fm-ugent.env nodemon src/index.ts",
     "demo": "env-cmd -f ./config/env-demo.env nodemon src/index.ts",
-    "remote-dev": "env-cmd -f ./config/env-remote.env nodemon src/index.ts",
-    "remote": "env-cmd -f ./config/env-remote.env ts-node src/index.ts",
+    "remote-dev": "env-cmd -f ./config/env-remote.env nodemon src/index.js",
+    "remote": "env-cmd -f ./config/env-remote.env ts-node src/index.js",
     "igent": "concurrently \"npm run b-b\" \"npm run arcadis\" \"npm run fm-ugent\""
   },
   "keywords": [],
