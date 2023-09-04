@@ -145,14 +145,12 @@ async function checkOwnership(actor, dataset) {
   const query = `PREFIX acl: <http://www.w3.org/ns/auth/acl#>
 
   ASK WHERE {
-    <${process.env.IDP}${dataset}/.acl#owner> acl:agent <${actor}> .
+    {<${process.env.IDP}${dataset}/.acl#owner> acl:agent <${actor}> .} UNION
+    {<${process.env.SPARQL_STORE_ENDPOINT}${dataset}/?graph=${process.env.IDP}${dataset}/.acl#owner> acl:agent <${actor}> .}
   }
   `
   const endpoint = process.env.SPARQL_STORE_ENDPOINT + dataset + "/sparql"
-  console.log('query :>> ', query);
-  console.log('endpoint :>> ', endpoint);
   const result = await queryFuseki(query, endpoint).then(i => i.json()).then(i => i.boolean)
-  console.log('result :>> ', result);
   return result
 }
 
@@ -252,4 +250,17 @@ async function getPermissions(agent, mode, dataset, filter = "") {
   return response
 }
 
-module.exports = {getPermissions, getReferences, query, getAllowedResources}
+async function checkDatasetExistence(dataset) {
+  const requestOptions = {
+      method: 'HEAD',
+      headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Authorization": `Basic ${Buffer.from(process.env.SPARQL_STORE_USERNAME + ":" + process.env.SPARQL_STORE_PW).toString('base64')}`
+      },
+  };
+
+  const results = await fetch(process.env.SPARQL_STORE_ENDPOINT+dataset, requestOptions)
+  return results.status
+}
+
+module.exports = {getPermissions, getReferences, query, getAllowedResources, checkDatasetExistence}

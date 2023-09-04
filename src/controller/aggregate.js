@@ -7,13 +7,13 @@ const QueryEngine = require('@comunica/query-sparql').QueryEngine
 async function run() {
     let allDuration = 0
 
-    await engine.query(`ASK {?s ?p ?o}`, {sources: p.map(i => i.referenceRegistry)})
+    await engine.query(`ASK {?s ?p ?o}`, { sources: p.map(i => i.referenceRegistry) })
     const now = new Date()
     const queryResults = await queryProject()
     const query = new Date()
-    
+
     console.log("duration of query task: ", query.getTime() - now.getTime())
-    
+
     for (let i = 0; i < iterations; i++) {
         const concepts = []
 
@@ -42,7 +42,7 @@ async function run() {
                 // console.log('final', final)
                 // console.log('duration', duration)
             }
-        }    
+        }
         // console.log('concepts', concepts)
 
     }
@@ -94,7 +94,7 @@ async function queryLocalReferences(ref, concept) {
     const reference = []
     let results
     if (method == "remote") results = await queryFuseki(query, concept.owner[option])
-    else results = await queryComunica(query, referenceRegistry )
+    else results = await queryComunica(query, referenceRegistry)
     results.results.bindings.forEach(binding => reference.push(binding))
     return reference
 }
@@ -135,8 +135,8 @@ async function queryConcept(concept) {
 }
 
 async function queryComunica(query, source) {
-    const result = await engine.query(query, {sources: [source]})
-    const { data } = await engine.resultToString(result,'application/sparql-results+json');
+    const result = await engine.query(query, { sources: [source] })
+    const { data } = await engine.resultToString(result, 'application/sparql-results+json');
     const asJSON = await streamToString(data)
     // engine.invalidateHttpCache()
     return JSON.parse(asJSON)
@@ -145,29 +145,29 @@ async function queryComunica(query, source) {
 function streamToString(stream) {
     const chunks = [];
     return new Promise((resolve, reject) => {
-      stream.on('data', chunk => chunks.push(Buffer.from(chunk)));
-      stream.on('error', err => reject(err));
-      stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+        stream.on('data', chunk => chunks.push(Buffer.from(chunk)));
+        stream.on('error', err => reject(err));
+        stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     });
-  }
+}
 
-  async function queryFuseki(query, endpoint) {
+async function queryFuseki(query, endpoint) {
 
     let urlencoded = new URLSearchParams();
     urlencoded.append("query", query)
     const requestOptions = {
-      method: 'POST',
-      headers: { 
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": `Basic ${Buffer.from(process.env.SPARQL_STORE_USERNAME + ":" + process.env.SPARQL_STORE_PW).toString('base64')}`
-      },
-      body: urlencoded,
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Authorization": `Basic ${Buffer.from(process.env.SPARQL_STORE_USERNAME + ":" + process.env.SPARQL_STORE_PW).toString('base64')}`
+        },
+        body: urlencoded,
     };
-  
+
     const results = await fetch(endpoint, requestOptions)
     return results
-  }
-  
+}
+
 async function queryProject() {
     const propagateVariables = ["el"]
     const endpoints = p.map(i => i.endpoint)
@@ -208,7 +208,7 @@ function getRoot(resource) {
     root = root.join('/');
     if (!root.endsWith('/')) root += '/';
     return root;
-  }
+}
 
 console.log('start')
 run().then(() => {

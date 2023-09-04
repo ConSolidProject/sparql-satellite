@@ -4,17 +4,8 @@
   "description": "",
   "main": "src/index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "architect": "env-cmd -f ./config/env-architect.env nodemon src/index.ts",
-    "engineer": "env-cmd -f ./config/env-engineer.env nodemon src/index.ts",
-    "fm": "env-cmd -f ./config/env-fm.env nodemon src/index.ts",
-    "b-b": "env-cmd -f ./config/env-b-b.env nodemon src/index.ts",
-    "arcadis": "env-cmd -f ./config/env-arcadis.env nodemon src/index.ts",
-    "fm-ugent": "env-cmd -f ./config/env-fm-ugent.env nodemon src/index.ts",
-    "demo": "env-cmd -f ./config/env-demo.env nodemon src/index.ts",
-    "remote-dev": "env-cmd -f ./config/env-remote.env nodemon src/index.js",
-    "remote": "env-cmd -f ./config/env-remote.env ts-node src/index.js",
-    "igent": "concurrently \"npm run b-b\" \"npm run arcadis\" \"npm run fm-ugent\""
+    "dev": "env-cmd -f ./config/local.env nodemon src/index.js",
+    "start": "env-cmd -f ./config/local.env ts-node src/index.js"
   },
   "keywords": [],
   "author": "",
