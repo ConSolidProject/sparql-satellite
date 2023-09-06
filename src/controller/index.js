@@ -10,6 +10,24 @@ async function getAllowedResources(req, res) {
   const allowed = await getPermissions(actor, mode, dataset)
   res.status(200).send(allowed)
 }  
+
+async function getProjectDatasets(req, res) {
+  const actor = req.auth.webId
+  const dataset = req.params.dataset
+  const project = req.body.project
+  const mode = `http://www.w3.org/ns/auth/acl#Read`
+  const allowed = await getPermissions(actor, mode, dataset).then(results => results.results.bindings.map(i => i.resource.value))
+  const query = `PREFIX dcat: <http://www.w3.org/ns/dcat#>
+  SELECT ?ds ?dURL WHERE {
+      <${project}> dcat:dataset+ ?ds .
+      ?ds dcat:distribution/dcat:accessURL ?dURL .
+  }`
+  const url = process.env.SPARQL_STORE_ENDPOINT + dataset;
+  const data = await queryFuseki(query, url).then(i => i.json())
+    .then(i => i.results.bindings.map(item => {return {dataset: item.ds.value, distribution: item.dURL.value}}))
+  const filtered = data.filter(item => allowed.includes(item.dataset) && allowed.includes(item.distribution))
+  res.status(200).send(filtered)
+}
    
 function adaptQuery(q, allowed, type) {
   let translation = translate(q)
@@ -73,9 +91,10 @@ function findLowerLevel(obj, variables) {
   }    
 }
  
-async function query(req, res) { 
+async function query(req, res) {
   // get allowed subset
   const actor = req.auth.webId
+  console.log('actor :>> ', actor);
   const dataset = req.params.dataset
   const mode = `http://www.w3.org/ns/auth/acl#Read`
   const startAllowed = new Date()
@@ -263,4 +282,4 @@ async function checkDatasetExistence(dataset) {
   return results.status
 }
 
-module.exports = {getPermissions, getReferences, query, getAllowedResources, checkDatasetExistence}
+module.exports = {getPermissions, getReferences, query, getAllowedResources, checkDatasetExistence, getProjectDatasets}

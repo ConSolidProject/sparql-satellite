@@ -1,7 +1,7 @@
 const express = require( 'express')
 const { log } = require( './logger')
 const cors = require( 'cors')
-const { query, getAllowedResources, getReferences, checkDatasetExistence} = require( "./controller")
+const { query, getAllowedResources, getReferences, checkDatasetExistence, getProjectDatasets} = require( "./controller")
 const bodyParser = require( 'body-parser')
 const { extractWebId } = require("express-solid-auth-wrapper")
 const port = process.env.PORT_SPARQL_SATELLITE
@@ -37,6 +37,7 @@ app.head("/:dataset/sparql", async (req, res) => {
     res.status(available).send()
 })
 
+app.post("/:dataset/datasets", getProjectDatasets)
 
 // dataset query
 app.get("/:dataset/sparql", query) 
