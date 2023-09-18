@@ -4,27 +4,72 @@ const { log } = require( '../logger')
 const { selectConcept, selectRemoteRepresentation, selectLocalRepresentation, getReferenceRegistries } = require( './templates_fuseki')
 
 async function getAllowedResources(req, res) {
-  const actor = req.auth.webId
-  const dataset = req.params.dataset
-  const mode = `http://www.w3.org/ns/auth/acl#${capitalizeFirstLetter(req.params.mode)}`
-  const allowed = await getPermissions(actor, mode, dataset)
-  res.status(200).send(allowed)
+  let actor
+  if (!req.query.actor) {actor = req.auth.webId}
+  else {actor = req.query.actor}
+  // actor is owner
+  // actor asks about himself (i.e. query actor and auth actor are the same or query actor is undefined)
+  if (await checkOwnership(req.auth.webId, req.params.dataset) || req.auth.webId == req.query.actor || (req.auth.webId && req.query.actor === undefined) ) {
+    const dataset = req.params.dataset
+    const mode = `http://www.w3.org/ns/auth/acl#${capitalizeFirstLetter(req.params.mode)}`
+    const allowed = await getPermissions(actor, mode, dataset).then(i => i.results.bindings.map(i => i.resource.value))
+
+    res.status(200).send({allowed, mode})
+  }
+
+  else {
+    res.status(403).send({message: "You are not allowed to get the permissions of this user for this dataset"})
+  }
 }  
 
 async function getProjectDatasets(req, res) {
   const actor = req.auth.webId
   const dataset = req.params.dataset
   const project = req.body.project
+  const distributionFilter = req.body.distributionFilter
+  const datasetFilter = req.body.datasetFilter
+
+
   const mode = `http://www.w3.org/ns/auth/acl#Read`
   const allowed = await getPermissions(actor, mode, dataset).then(results => results.results.bindings.map(i => i.resource.value))
-  const query = `PREFIX dcat: <http://www.w3.org/ns/dcat#>
+  let query = `PREFIX dcat: <http://www.w3.org/ns/dcat#>
   SELECT ?ds ?dURL WHERE {
       <${project}> dcat:dataset+ ?ds .
-      ?ds dcat:distribution/dcat:accessURL ?dURL .
-  }`
-  const url = process.env.SPARQL_STORE_ENDPOINT + dataset;
+      ?ds dcat:distribution ?dist .
+      ?dist dcat:accessURL ?dURL .
+  `
+  if (distributionFilter) {
+    distributionFilter.forEach(filter => {
+      let o
+      if (filter.object.includes("http")) {
+        o = `<${filter.object}>`
+      } else {
+        o = '"' + filter.object + '"'
+      }
+      query += `?dist <${filter.predicate}> ${o} .`
+    })
+  }
+
+  if (datasetFilter) {
+    datasetFilter.forEach(filter => {
+      let o
+      if (filter.object.includes("http")) {
+        o = `<${filter.object}>`
+      } else {
+        o = '"' + filter.object + '"'
+      }
+      query += `?ds <${filter.predicate}> ${o} .`
+    })
+  }
+
+  query += `}`
+
+  console.log('query :>> ', query);
+  const url = process.env.SPARQL_STORE_ENDPOINT + dataset + '/sparql';
+  console.log('url :>> ', url);
   const data = await queryFuseki(query, url).then(i => i.json())
     .then(i => i.results.bindings.map(item => {return {dataset: item.ds.value, distribution: item.dURL.value}}))
+    console.log('data :>> ', data);
   const filtered = data.filter(item => allowed.includes(item.dataset) && allowed.includes(item.distribution))
   res.status(200).send(filtered)
 }
@@ -124,7 +169,6 @@ async function query(req, res) {
 
   // owner can query everything
   const isOwner = await checkOwnership(actor, dataset)
-  console.log('isOwner :>> ', isOwner);
   if (!isOwner) {
     const translated = translate(q)
     if (translated.type === "from") {
@@ -263,7 +307,6 @@ async function getPermissions(agent, mode, dataset, filter = "") {
       ${filter}
     }`}
 
-    console.log('query :>> ', query);
   const url = process.env.SPARQL_STORE_ENDPOINT + dataset;
   const response = await queryFuseki(query, url).then(i => i.json()).catch(err => console.log('err', err))
   return response

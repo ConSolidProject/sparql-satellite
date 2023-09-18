@@ -27,9 +27,11 @@ app.get('/', (req, res) => {
     res.send('app is running') 
 })  
 
-app.post('/:dataset/allowed/:mode', getAllowedResources)
+app.get('/:dataset/allowed/:mode', getAllowedResources)
 
 app.post("/:dataset/references", getReferences)
+
+app.post("/:dataset/datasets", getProjectDatasets)
 
 // HEAD request to see if dataset exists
 app.head("/:dataset/sparql", async (req, res) => {
@@ -37,14 +39,12 @@ app.head("/:dataset/sparql", async (req, res) => {
     res.status(available).send()
 })
 
-app.post("/:dataset/datasets", getProjectDatasets)
-
 // dataset query
 app.get("/:dataset/sparql", query) 
 app.post("/:dataset/sparql", query)
 
-
+ 
 
 app.listen(port, async () => {
     log.info(`Server listening at http://localhost:${port}`);
-})   
+})    

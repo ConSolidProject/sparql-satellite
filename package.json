@@ -22,6 +22,8 @@
     "express-solid-auth-wrapper": "github:ConSolidProject/express-solid-auth-wrapper",
     "form-data": "^4.0.0",
     "node-fetch": "^2.6.7",
+    "node-jws": "^0.1.4",
+    "node-jws-file-provider": "^0.1.4",
     "pino": "^7.8.1",
     "pino-pretty": "^7.5.3",
     "solid-node-client": "^2.1.10",
