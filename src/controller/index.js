@@ -64,19 +64,15 @@ async function getProjectDatasets(req, res) {
 
   query += `}`
 
-  console.log('query :>> ', query);
   const url = process.env.SPARQL_STORE_ENDPOINT + dataset + '/sparql';
-  console.log('url :>> ', url);
   const data = await queryFuseki(query, url).then(i => i.json())
     .then(i => i.results.bindings.map(item => {return {dataset: item.ds.value, distribution: item.dURL.value}}))
-    console.log('data :>> ', data);
   const filtered = data.filter(item => allowed.includes(item.dataset) && allowed.includes(item.distribution))
   res.status(200).send(filtered)
 }
    
 function adaptQuery(q, allowed, type) {
   let translation = translate(q)
-  // console.log('JSON.stringify(translation, 0, 4) :>> ', JSON.stringify(translation, undefined, 4));
   const bgp = findLowerLevel(translation)
   let wrapped
   let variables
@@ -137,9 +133,10 @@ function findLowerLevel(obj, variables) {
 }
  
 async function query(req, res) {
+
+
   // get allowed subset
   const actor = req.auth.webId
-  console.log('actor :>> ', actor);
   const dataset = req.params.dataset
   const mode = `http://www.w3.org/ns/auth/acl#Read`
   const startAllowed = new Date()
@@ -167,10 +164,15 @@ async function query(req, res) {
   let query
   if (!q) res.send("no query")
 
-  // owner can query everything
+  // owner can query everything 
   const isOwner = await checkOwnership(actor, dataset)
-  if (!isOwner) {
-    const translated = translate(q)
+  if (!isOwner) { 
+    let translated
+    try {
+      translated = translate(q)
+    } catch (error) {
+      res.status(500).send({message: "Query could not be translated", error}) 
+    }
     if (translated.type === "from") {
       translated.named.forEach(named => {
       })
@@ -185,14 +187,18 @@ async function query(req, res) {
     console.log("owner can query everything");
     query = q
   }
-
+  console.log('query :>> ', query);
   const url = process.env.SPARQL_STORE_ENDPOINT + dataset;
   const data = await queryFuseki(query, url)
-
+  console.log('translate(query) :>> ', translate(query));
   let final
   if (query.toLowerCase().includes("construct")) {
     final = await data.text()
-  } else {
+  }  
+  else if (translate(query).type === "ask") {
+    final = await data.json()
+  } 
+  else {
     res.set("Content-Type", "application/sparql-results+json")
     final = await data.json()
   }
