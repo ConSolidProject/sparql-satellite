@@ -8,7 +8,8 @@ The service only support basic SPARQL patterns: SELECT and CONSTRUCT. Queries in
 SPARQL_STORE_USERNAME=admin
 SPARQL_STORE_PW=pw
 IDP=http://localhost:3000/
-SPARQL_STORE_ENDPOINT=http://localhost:3030/```
+SPARQL_STORE_ENDPOINT=http://localhost:3030/
+```
 
 * Run ```npm install```
 * Run ```npm run start```
@@ -24,26 +25,22 @@ SPARQL_STORE_ENDPOINT=http://localhost:3030/```
     "email": "example@example.org",
     "password": "test123",
     "name": "demo"
-}'```
+}'
+```
 
 * Request a token with {id:secret} as a base64 encoded Basic Auth value. Your token can be found in (response.access_token)
 ```curl --location 'http://localhost:3000/.oidc/token' \
 --header 'Content-Type: application/x-www-form-urlencoded' \
 --header 'Authorization: Basic {base64{id:secret}} \
 --data-urlencode 'grant_type=client_credentials' \
---data-urlencode 'scope=webid'```
+--data-urlencode 'scope=webid'
+```
 
 * You can now use the token in your requests as a Bearer token: 
-```--header 'Authorization: Bearer {access_token}'```
+```--header 'Authorization: Bearer {access_token}'
+```
 
 ## API documentation
-Replace `[PORT]` with the port number where the server is running.
-
-### Content Types
-- Application/JSON for responses
-- Application/SPARQL-UPDATE for specific update requests
-
-## Endpoints
 ### Dataset Existence
 - `HEAD /:dataset/sparql`
   - Description: Checks if a dataset exists.
