@@ -15,6 +15,7 @@
     "@inrupt/solid-client-authn-core": "^1.12.1",
     "@solid/access-token-verifier": "^2.0.3",
     "body-parser": "^1.19.2",
+    "concurrently": "^8.2.2",
     "cors": "^2.8.5",
     "dayjs": "^1.11.0",
     "env-cmd": "^10.1.0",
