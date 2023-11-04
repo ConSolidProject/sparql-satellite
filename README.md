@@ -37,8 +37,7 @@ SPARQL_STORE_ENDPOINT=http://localhost:3030/
 ```
 
 * You can now use the token in your requests as a Bearer token: 
-```--header 'Authorization: Bearer {access_token}'
-```
+`--header 'Authorization: Bearer {access_token}'`
 
 ## API documentation
 ### Dataset Existence
