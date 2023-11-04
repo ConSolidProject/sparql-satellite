@@ -22,10 +22,6 @@ app.use(express.urlencoded({ limit: "5mb", extended: true }));
 // set satellite authenticated session as req.session
 app.use(extractWebId)
 // app.use(setSatellite(JSON.parse(process.env.ACCOUNT)))
- 
-app.get('/', (req, res) => {
-    res.send('app is running') 
-})  
 
 app.get('/:dataset/allowed/:mode', getAllowedResources)
 
