@@ -25,7 +25,7 @@ app.use(extractWebId)
 
 app.get('/:dataset/allowed/:mode', getAllowedResources)
 
-app.post("/:dataset/references", getReferences)
+// app.post("/:dataset/references", getReferences)
 
 app.post("/:dataset/datasets", getProjectDatasets)
 
